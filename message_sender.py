@@ -88,7 +88,7 @@ def on_free_text_updated(message_text):
     message_sender.message_label.configure(text=message_text)
     return True
 
-def get_guides():
+def get_guides(test_guides=None):
     with open("guides.csv", encoding="utf-8") as f:
         guides = []
         for i, row in enumerate(csv.reader(f)):
@@ -97,6 +97,10 @@ def get_guides():
             if not row[0]:
                 break
             guides.append(Guide(row[0], row[2]))
+    if test_guides:
+	    for guide in test_guides.split(","):
+	        name, number = guide.split(":")
+	        guides.append(Guide(name, number))
     return guides
 
 def message_sender_form():
@@ -105,6 +109,7 @@ def message_sender_form():
         description="Sends WhatsApp messages in bulk",
     )
     parser.add_argument("-d", "--dry", action="store_true", help="Don't actually send messages")
+    parser.add_argument("-t", "--test", help="Additional test numbers (format: <name>:<number>[<name>:<number>...])")
     args = parser.parse_args()
 
     global message_sender
@@ -112,7 +117,7 @@ def message_sender_form():
     frm = tkinter.ttk.Frame(root, padding=10)
     frm.grid()
     tkinter.ttk.Label(frm, text="מי פנוי באלנבי?").grid(column=0, row=0)
-    guides = get_guides()
+    guides = get_guides(args.test)
     receipt_check_boxes = []
     for i, guide in enumerate(guides):
         check_button = tkinter.ttk.Checkbutton(frm, text=guide.name, variable=guide.var)
