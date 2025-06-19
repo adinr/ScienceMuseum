@@ -4,17 +4,31 @@ import pywhatkit
 import csv
 import argparse
 import os
+import sys
+import logging
 
 
 class Guide:
     def __init__(self, name, number):
         self.name = name
         self.number = f"+972{number[1:].replace('-', '')}"
-        print(self.number)
         self.var = tkinter.IntVar(value=0)
 
 class MessageSender:
-    def __init__(self, args, message_widget, message_widget_var, guides, message_templates_dict, var_widgets, template_vars, message_label, free_text_widget_var):
+    def __init__(
+        self,
+        logger,
+        args,
+        message_widget,
+        message_widget_var,
+        guides,
+        message_templates_dict,
+        var_widgets,
+        template_vars,
+        message_label,
+        free_text_widget_var,
+    ):
+        self.logger = logger
         self.dry_run = args.dry
         self.message_widget = message_widget
         self.message_widget_var = message_widget_var
@@ -51,12 +65,12 @@ def get_message_text():
 def send_message():
     message_text = get_message_text()
     if not message_text:
-        print("no message")
+        message_sender.logger.warn("no message")
         return
-    print(f"{'[dry run] ' if message_sender.dry_run else ''}sending message {message_text} to")
+    message_sender.logger.info(f"{'[dry run] ' if message_sender.dry_run else ''}sending message {message_text} to")
     for guide in message_sender.guides:
         if guide.var.get():
-            print(guide.number)
+            message_sender.logger.info(guide.number)
             if not message_sender.dry_run:
                 pywhatkit.sendwhatmsg_instantly(guide.number, message_text, wait_time=20, tab_close=True)
 
@@ -69,7 +83,7 @@ def find_template_vars(template):
     return vars
 
 def on_message_template_selected(selected_message_template):
-    print(f"on_message_template_selected {selected_message_template}")
+    message_sender.logger.debug(f"on_message_template_selected {selected_message_template}")
     message_template = message_sender.message_templates_dict[selected_message_template]
     var_indices = find_template_vars(message_template.template)
     for i, var_widget in enumerate(message_sender.var_widgets):
@@ -85,7 +99,7 @@ def on_message_var_selected(selected_var):
     message_sender.message_label.configure(text=message_text)
 
 def on_free_text_updated(message_text):
-    print(f"on_free_text_updated {message_text}")
+    message_sender.logger.info(f"on_free_text_updated {message_text}")
     message_sender.message_label.configure(text=message_text)
     return True
 
@@ -111,7 +125,12 @@ def message_sender_form():
     )
     parser.add_argument("-d", "--dry", action="store_true", help="Don't actually send messages")
     parser.add_argument("-t", "--test", help="Additional test numbers (format: <name>:<number>[<name>:<number>...])")
+    parser.add_argument("-v", "--verbose", action="store_true", help="print debug logs")
     args = parser.parse_args()
+
+    logging.basicConfig(stream=sys.stderr)
+    logger = logging.getLogger("MessageSender")
+    logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
     global message_sender
     root = tkinter.Tk()
@@ -119,6 +138,8 @@ def message_sender_form():
     frm.grid()
     tkinter.ttk.Label(frm, text="מי פנוי באלנבי?").grid(column=0, row=0)
     guides = get_guides(args.test)
+    for guide in guides:
+        logger.debug(f"Guide {guide.number}")
     receipt_check_boxes = []
     NUM_COLUMNS = 3
     for i, guide in enumerate(guides):
@@ -163,6 +184,7 @@ def message_sender_form():
     tkinter.ttk.Button(frm, text="Quit", command=root.destroy).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
 
     message_sender = MessageSender(
+        logger,
         args,
         message_widget,
         message_widget_var,
