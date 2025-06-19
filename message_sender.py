@@ -113,6 +113,7 @@ def get_guides(test_guides=None):
             if not row[0]:
                 break
             guides.append(Guide(row[0], row[2]))
+        guides.sort(key=lambda guide: guide.name)
     if test_guides:
         for guide in test_guides.split(","):
             name, number = guide.split(":")
@@ -146,7 +147,7 @@ def message_sender_form():
     receipt_check_boxes = []
     for i, guide in enumerate(guides):
         check_button = tkinter.ttk.Checkbutton(frm, text=guide.name, variable=guide.var)
-        check_button.grid(column=i % NUM_COLUMNS, row=i // NUM_COLUMNS + 1)
+        check_button.grid(column=(NUM_COLUMNS - i % NUM_COLUMNS - 1), row=i // NUM_COLUMNS + 1)
         receipt_check_boxes.append(check_button)
     sessions = ["ראשון", "שני", "שלישי", "רביעי"]
     days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
