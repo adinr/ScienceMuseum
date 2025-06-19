@@ -26,6 +26,14 @@ class MessageTemplate:
 		self.template = template
 		self.variables = args
 
+class Accumulator:
+	def __init__(self, initial=0):
+		self.val = initial
+
+	def get_next(self):
+		self.val += 1
+		return self.val - 1
+
 def get_message_text():
 	message_text = message_sender.message_widget_var.get()
 	message_text = message_text.format(*[template_var.get() for template_var in message_sender.template_vars[:len(find_template_vars(message_text))]])
@@ -99,22 +107,23 @@ def message_sender_form():
 		MessageTemplate("תודה!")
 	]
 	message_templates_dict = {template.template: template for template in message_templates}
+	row_accumulator = Accumulator(1)
 	message_widget_var = tkinter.StringVar()
 	message_widget = tkinter.ttk.OptionMenu(frm, message_widget_var, None, *[template.template for template in message_templates], command=on_message_template_seleccted)
 	INPUT_COLUMN = 2
-	message_widget.grid(column=INPUT_COLUMN, row=1)
+	message_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
 	template_vars = []
 	var_widgets = []
 	for i in range(4):
 		message_template_var = tkinter.StringVar()
 		var_widget = tkinter.ttk.OptionMenu(frm, message_template_var, command=on_message_var_selected)
-		var_widget.grid(column=INPUT_COLUMN, row=i + 2)
+		var_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
 		var_widgets.append(var_widget)
 		template_vars.append(message_template_var)
 	message_label = tkinter.ttk.Label(frm)
-	message_label.grid(column=INPUT_COLUMN, row=6)
-	tkinter.ttk.Button(frm, text="Send", command=send_message).grid(column=INPUT_COLUMN, row=7)
-	tkinter.ttk.Button(frm, text="Quit", command=root.destroy).grid(column=INPUT_COLUMN, row=8)
+	message_label.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+	tkinter.ttk.Button(frm, text="Send", command=send_message).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+	tkinter.ttk.Button(frm, text="Quit", command=root.destroy).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
 	message_sender = MessageSender(message_widget, message_widget_var, guides, message_templates_dict, var_widgets, template_vars, message_label)
 	root.mainloop()
 
