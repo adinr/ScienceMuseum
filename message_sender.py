@@ -3,6 +3,7 @@ import tkinter.ttk
 import pywhatkit
 import csv
 import argparse
+import os
 
 
 class Guide:
@@ -89,7 +90,7 @@ def on_free_text_updated(message_text):
     return True
 
 def get_guides(test_guides=None):
-    with open("guides.csv", encoding="utf-8") as f:
+    with open(os.path.join(os.path.dirname(__file__), "guides.csv"), encoding="utf-8") as f:
         guides = []
         for i, row in enumerate(csv.reader(f)):
             if i < 3:
