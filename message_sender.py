@@ -84,7 +84,6 @@ def message_sender_form():
 	frm = tkinter.ttk.Frame(root, padding=10)
 	frm.grid()
 	tkinter.ttk.Label(frm, text="מי פנוי באלנבי?").grid(column=0, row=0)
-	tkinter.ttk.Button(frm, text="Quit", command=root.destroy).grid(column=1, row=0)
 	guides = get_guides()
 	receipt_check_boxes = []
 	for i, guide in enumerate(guides):
@@ -102,18 +101,20 @@ def message_sender_form():
 	message_templates_dict = {template.template: template for template in message_templates}
 	message_widget_var = tkinter.StringVar()
 	message_widget = tkinter.ttk.OptionMenu(frm, message_widget_var, None, *[template.template for template in message_templates], command=on_message_template_seleccted)
+	INPUT_COLUMN = 2
+	message_widget.grid(column=INPUT_COLUMN, row=1)
 	template_vars = []
 	var_widgets = []
 	for i in range(4):
 		message_template_var = tkinter.StringVar()
 		var_widget = tkinter.ttk.OptionMenu(frm, message_template_var, command=on_message_var_selected)
-		var_widget.grid(column=0, row=len(guides) // 2 + i + 2)
+		var_widget.grid(column=INPUT_COLUMN, row=i + 2)
 		var_widgets.append(var_widget)
 		template_vars.append(message_template_var)
-	message_widget.grid(column=0, row=len(guides) // 2 + 1)
 	message_label = tkinter.ttk.Label(frm)
-	message_label.grid(column = 0, row=len(guides) // 2 + 6)
-	tkinter.ttk.Button(frm, text="Send", command=send_message).grid(column=1, row=len(guides) // 2 + 6)
+	message_label.grid(column=INPUT_COLUMN, row=6)
+	tkinter.ttk.Button(frm, text="Send", command=send_message).grid(column=INPUT_COLUMN, row=7)
+	tkinter.ttk.Button(frm, text="Quit", command=root.destroy).grid(column=INPUT_COLUMN, row=8)
 	message_sender = MessageSender(message_widget, message_widget_var, guides, message_templates_dict, var_widgets, template_vars, message_label)
 	root.mainloop()
 
