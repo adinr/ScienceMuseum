@@ -120,9 +120,10 @@ def message_sender_form():
     tkinter.ttk.Label(frm, text="מי פנוי באלנבי?").grid(column=0, row=0)
     guides = get_guides(args.test)
     receipt_check_boxes = []
+    NUM_COLUMNS = 3
     for i, guide in enumerate(guides):
         check_button = tkinter.ttk.Checkbutton(frm, text=guide.name, variable=guide.var)
-        check_button.grid(column=i % 2, row=i // 2 + 1)
+        check_button.grid(column=i % NUM_COLUMNS, row=i // NUM_COLUMNS + 1)
         receipt_check_boxes.append(check_button)
     sessions = ["ראשון", "שני", "שלישי", "רביעי"]
     days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
@@ -135,7 +136,7 @@ def message_sender_form():
     message_templates_dict = {template.template: template for template in message_templates}
     row_accumulator = Accumulator(1)
 
-    INPUT_COLUMN = 2
+    INPUT_COLUMN = NUM_COLUMNS
 
     free_text_widget_var = tkinter.StringVar()
     free_text_widget = tkinter.ttk.Entry(frm, textvariable=free_text_widget_var, validate="key", validatecommand=(frm.register(on_free_text_updated), "%P"))
