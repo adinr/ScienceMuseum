@@ -1,5 +1,6 @@
 import tkinter
 import tkinter.ttk
+import tkinter.font
 import pywhatkit
 import csv
 import argparse
@@ -136,7 +137,7 @@ def message_sender_form():
     root = tkinter.Tk()
     frm = tkinter.ttk.Frame(root, padding=10)
     frm.grid()
-    tkinter.ttk.Label(frm, text="מי פנוי באלנבי?").grid(column=0, row=0)
+    tkinter.ttk.Label(frm, text="מי פנוי באלנבי?", font=tkinter.font.Font(weight=tkinter.font.BOLD)).grid(column=0, row=0)
     guides = get_guides(args.test)
     for guide in guides:
         logger.debug(f"Guide {guide.number}")
