@@ -2,6 +2,7 @@ import tkinter
 import tkinter.ttk
 import pywhatkit
 import csv
+import argparse
 
 
 class Guide:
@@ -12,7 +13,8 @@ class Guide:
         self.var = tkinter.IntVar(value=0)
 
 class MessageSender:
-    def __init__(self, message_widget, message_widget_var, guides, message_templates_dict, var_widgets, template_vars, message_label, free_text_widget_var):
+    def __init__(self, args, message_widget, message_widget_var, guides, message_templates_dict, var_widgets, template_vars, message_label, free_text_widget_var):
+        self.dry_run = args.dry
         self.message_widget = message_widget
         self.message_widget_var = message_widget_var
         self.guides = guides
@@ -50,11 +52,12 @@ def send_message():
     if not message_text:
         print("no message")
         return
-    print(f"sending message {message_text} to")
+    print(f"{'[dry run] ' if message_sender.dry_run else ''}sending message {message_text} to")
     for guide in message_sender.guides:
         if guide.var.get():
             print(guide.number)
-            pywhatkit.sendwhatmsg_instantly(guide.number, message_text, wait_time=20, tab_close=True)
+            if not message_sender.dry_run:
+                pywhatkit.sendwhatmsg_instantly(guide.number, message_text, wait_time=20, tab_close=True)
 
 def find_template_vars(template):
     i = template.find("{}")
@@ -97,6 +100,13 @@ def get_guides():
     return guides
 
 def message_sender_form():
+    parser = argparse.ArgumentParser(
+        prog="MessageSender",
+        description="Sends WhatsApp messages in bulk",
+    )
+    parser.add_argument("-d", "--dry", action="store_true", help="Don't actually send messages")
+    args = parser.parse_args()
+
     global message_sender
     root = tkinter.Tk()
     frm = tkinter.ttk.Frame(root, padding=10)
@@ -146,6 +156,7 @@ def message_sender_form():
     tkinter.ttk.Button(frm, text="Quit", command=root.destroy).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
 
     message_sender = MessageSender(
+        args,
         message_widget,
         message_widget_var,
         guides,
