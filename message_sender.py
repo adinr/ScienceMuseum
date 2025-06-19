@@ -12,7 +12,7 @@ class Guide:
 		self.var = tkinter.IntVar(value=0)
 
 class MessageSender:
-	def __init__(self, message_widget, message_widget_var, guides, message_templates_dict, var_widgets, template_vars, message_label):
+	def __init__(self, message_widget, message_widget_var, guides, message_templates_dict, var_widgets, template_vars, message_label, free_text_widget_var):
 		self.message_widget = message_widget
 		self.message_widget_var = message_widget_var
 		self.guides = guides
@@ -20,6 +20,7 @@ class MessageSender:
 		self.var_widgets = var_widgets
 		self.template_vars = template_vars
 		self.message_label = message_label
+		self.free_text_widget_var = free_text_widget_var
 
 class MessageTemplate:
 	def __init__(self, template, *args):
@@ -35,8 +36,12 @@ class Accumulator:
 		return self.val - 1
 
 def get_message_text():
-	message_text = message_sender.message_widget_var.get()
-	message_text = message_text.format(*[template_var.get() for template_var in message_sender.template_vars[:len(find_template_vars(message_text))]])
+	free_text = message_sender.free_text_widget_var.get()
+	if free_text:
+		message_text = free_text
+	else:
+		message_text = message_sender.message_widget_var.get()
+		message_text = message_text.format(*[template_var.get() for template_var in message_sender.template_vars[:len(find_template_vars(message_text))]])
 	message_sender.message_label.configure(text=message_text)
 	return message_text
 
@@ -75,6 +80,11 @@ def on_message_var_selected(selected_var):
 	message_text = get_message_text()
 	message_sender.message_label.configure(text=message_text)
 
+def on_free_text_updated(message_text):
+	print(f"on_free_text_updated {message_text}")
+	message_sender.message_label.configure(text=message_text)
+	return True
+
 def get_guides():
 	with open("guides.csv", encoding="utf-8") as f:
 		guides = []
@@ -108,10 +118,17 @@ def message_sender_form():
 	]
 	message_templates_dict = {template.template: template for template in message_templates}
 	row_accumulator = Accumulator(1)
+
+	INPUT_COLUMN = 2
+
+	free_text_widget_var = tkinter.StringVar()
+	free_text_widget = tkinter.ttk.Entry(frm, textvariable=free_text_widget_var, validate="key", validatecommand=(frm.register(on_free_text_updated), "%P"))
+	free_text_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+
 	message_widget_var = tkinter.StringVar()
 	message_widget = tkinter.ttk.OptionMenu(frm, message_widget_var, None, *[template.template for template in message_templates], command=on_message_template_selected)
-	INPUT_COLUMN = 2
 	message_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+
 	template_vars = []
 	var_widgets = []
 	for i in range(4):
@@ -120,11 +137,25 @@ def message_sender_form():
 		var_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
 		var_widgets.append(var_widget)
 		template_vars.append(message_template_var)
+
 	message_label = tkinter.ttk.Label(frm)
 	message_label.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+
 	tkinter.ttk.Button(frm, text="Send", command=send_message).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+
 	tkinter.ttk.Button(frm, text="Quit", command=root.destroy).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
-	message_sender = MessageSender(message_widget, message_widget_var, guides, message_templates_dict, var_widgets, template_vars, message_label)
+
+	message_sender = MessageSender(
+		message_widget,
+		message_widget_var,
+		guides,
+		message_templates_dict,
+		var_widgets,
+		template_vars,
+		message_label,
+		free_text_widget_var,
+	)
+
 	root.mainloop()
 
 
