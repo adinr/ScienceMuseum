@@ -59,8 +59,8 @@ def find_template_vars(template):
 		i = template.find("{}", i + 1)
 	return vars
 
-def on_message_template_seleccted(selected_message_template):
-	print(f"on_message_template_seleccted {selected_message_template}")
+def on_message_template_selected(selected_message_template):
+	print(f"on_message_template_selected {selected_message_template}")
 	message_template = message_sender.message_templates_dict[selected_message_template]
 	var_indices = find_template_vars(message_template.template)
 	for i, var_widget in enumerate(message_sender.var_widgets):
@@ -109,7 +109,7 @@ def message_sender_form():
 	message_templates_dict = {template.template: template for template in message_templates}
 	row_accumulator = Accumulator(1)
 	message_widget_var = tkinter.StringVar()
-	message_widget = tkinter.ttk.OptionMenu(frm, message_widget_var, None, *[template.template for template in message_templates], command=on_message_template_seleccted)
+	message_widget = tkinter.ttk.OptionMenu(frm, message_widget_var, None, *[template.template for template in message_templates], command=on_message_template_selected)
 	INPUT_COLUMN = 2
 	message_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
 	template_vars = []
