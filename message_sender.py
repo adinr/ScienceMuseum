@@ -1,6 +1,5 @@
 import tkinter
 import tkinter.ttk
-import tkinter.font
 import pywhatkit
 import csv
 import argparse
@@ -138,16 +137,16 @@ def message_sender_form():
 
     global message_sender
     root = tkinter.Tk()
+    root.title("מי פנוי באלנבי?")
     frm = tkinter.ttk.Frame(root, padding=10)
     frm.grid()
-    tkinter.ttk.Label(frm, text="מי פנוי באלנבי?", font=tkinter.font.Font(weight=tkinter.font.BOLD)).grid(column=NUM_COLUMNS, row=0)
     guides = get_guides(args.test)
     for guide in guides:
         logger.debug(f"Guide {guide.number}")
     receipt_check_boxes = []
     for i, guide in enumerate(guides):
         check_button = tkinter.ttk.Checkbutton(frm, text=guide.name, variable=guide.var)
-        check_button.grid(column=(NUM_COLUMNS - i % NUM_COLUMNS - 1), row=i // NUM_COLUMNS + 1)
+        check_button.grid(column=(NUM_COLUMNS - i % NUM_COLUMNS - 1), row=i // NUM_COLUMNS)
         receipt_check_boxes.append(check_button)
     sessions = ["ראשון", "שני", "שלישי", "רביעי"]
     days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
@@ -158,7 +157,7 @@ def message_sender_form():
         MessageTemplate("תודה!")
     ]
     message_templates_dict = {template.template: template for template in message_templates}
-    row_accumulator = Accumulator(1)
+    row_accumulator = Accumulator()
 
     INPUT_COLUMN = NUM_COLUMNS
 
