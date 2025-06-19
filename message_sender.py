@@ -133,16 +133,17 @@ def message_sender_form():
     logger = logging.getLogger("MessageSender")
     logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
+    NUM_COLUMNS = 3
+
     global message_sender
     root = tkinter.Tk()
     frm = tkinter.ttk.Frame(root, padding=10)
     frm.grid()
-    tkinter.ttk.Label(frm, text="מי פנוי באלנבי?", font=tkinter.font.Font(weight=tkinter.font.BOLD)).grid(column=0, row=0)
+    tkinter.ttk.Label(frm, text="מי פנוי באלנבי?", font=tkinter.font.Font(weight=tkinter.font.BOLD)).grid(column=NUM_COLUMNS, row=0)
     guides = get_guides(args.test)
     for guide in guides:
         logger.debug(f"Guide {guide.number}")
     receipt_check_boxes = []
-    NUM_COLUMNS = 3
     for i, guide in enumerate(guides):
         check_button = tkinter.ttk.Checkbutton(frm, text=guide.name, variable=guide.var)
         check_button.grid(column=i % NUM_COLUMNS, row=i // NUM_COLUMNS + 1)
