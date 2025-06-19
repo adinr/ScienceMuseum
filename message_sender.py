@@ -99,9 +99,9 @@ def get_guides(test_guides=None):
                 break
             guides.append(Guide(row[0], row[2]))
     if test_guides:
-	    for guide in test_guides.split(","):
-	        name, number = guide.split(":")
-	        guides.append(Guide(name, number))
+        for guide in test_guides.split(","):
+            name, number = guide.split(":")
+            guides.append(Guide(name, number))
     return guides
 
 def message_sender_form():
