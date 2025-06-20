@@ -100,7 +100,7 @@ class MessageSender:
     def send_message(self):
         message_text = self.get_message_text()
         if not message_text:
-            self.logger.warn("no message")
+            self.logger.warning("no message")
             return
         self.logger.info(f"{'[dry run] ' if self.args.dry else ''}sending message {message_text} to")
         for guide in self.guides:
