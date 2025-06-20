@@ -11,7 +11,7 @@ import logging
 class Guide:
     def __init__(self, name, number):
         self.name = name
-        self.number = f"+972{number[1:].replace('-', '')}"
+        self.number = f"{(number if number.startswith('+') else '+972' + number[1:]).replace('-', '')}"
         self.var = tkinter.IntVar(value=0)
 
 class MessageSender:
