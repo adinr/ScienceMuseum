@@ -15,29 +15,128 @@ class Guide:
         self.var = tkinter.IntVar(value=0)
 
 class MessageSender:
-    def __init__(
-        self,
-        logger,
-        args,
-        message_widget,
-        message_widget_var,
-        guides,
-        message_templates_dict,
-        var_widgets,
-        template_vars,
-        message_label,
-        free_text_widget_var,
-    ):
-        self.logger = logger
-        self.dry_run = args.dry
-        self.message_widget = message_widget
-        self.message_widget_var = message_widget_var
-        self.guides = guides
-        self.message_templates_dict = message_templates_dict
-        self.var_widgets = var_widgets
-        self.template_vars = template_vars
-        self.message_label = message_label
-        self.free_text_widget_var = free_text_widget_var
+    def __init__(self):
+        self.parse_args()
+        logging.basicConfig(stream=sys.stderr)
+        self.logger = logging.getLogger("MessageSender")
+        self.logger.setLevel(logging.DEBUG if self.args.verbose else logging.INFO)
+        self.build_form()
+
+    def parse_args(self):
+        parser = argparse.ArgumentParser(
+            prog="MessageSender",
+            description="Sends WhatsApp messages in bulk",
+        )
+        parser.add_argument("-d", "--dry", action="store_true", help="Don't actually send messages")
+        parser.add_argument("-t", "--test", help="Additional test numbers (format: <name>:<number>[<name>:<number>...])")
+        parser.add_argument("-v", "--verbose", action="store_true", help="print debug logs")
+        self.args = parser.parse_args()
+
+    def build_form(self):
+        NUM_COLUMNS = 3
+
+        self.root = tkinter.Tk()
+        self.root.title("מי פנוי באלנבי?")
+        self.frm = tkinter.ttk.Frame(self.root, padding=10)
+        self.frm.grid()
+        self.guides = get_guides(self.args.test)
+        for guide in self.guides:
+            self.logger.debug(f"Guide {guide.number}")
+        receipt_check_boxes = []
+        for i, guide in enumerate(self.guides):
+            check_button = tkinter.ttk.Checkbutton(self.frm, text=guide.name, variable=guide.var)
+            check_button.grid(column=(NUM_COLUMNS - i % NUM_COLUMNS - 1), row=i // NUM_COLUMNS)
+            receipt_check_boxes.append(check_button)
+        sessions = ["ראשון", "שני", "שלישי", "רביעי"]
+        days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
+        message_templates = [
+            MessageTemplate("היי, אפשרי לך לקחת מחזור {} ביום {}?", sessions, days),
+            MessageTemplate("היי, הקבוצה של מחזור {} ביום {} ביטלה.", sessions, days),
+            MessageTemplate("היי, הקבוצה של מחזור {} ביום {} {} ב{}. אפשרי לך?", sessions, days, ["מאחרת", "מקדימה"], ["15 דקות", "30 דקות", "שעה"]),
+            MessageTemplate("תודה!")
+        ]
+        self.message_templates_dict = {template.template: template for template in message_templates}
+        row_accumulator = Accumulator()
+
+        INPUT_COLUMN = NUM_COLUMNS
+
+        self.free_text_widget_var = tkinter.StringVar()
+        self.free_text_widget = tkinter.ttk.Entry(self.frm, textvariable=self.free_text_widget_var, validate="key", validatecommand=(self.frm.register(self.on_free_text_updated), "%P"))
+        self.free_text_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+
+        self.message_widget_var = tkinter.StringVar()
+        self.message_widget = tkinter.ttk.OptionMenu(self.frm, self.message_widget_var, None, *[template.template for template in message_templates], command=self.on_message_template_selected)
+        self.message_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+
+        self.template_vars = []
+        self.var_widgets = []
+        for i in range(4):
+            message_template_var = tkinter.StringVar()
+            var_widget = tkinter.ttk.OptionMenu(self.frm, message_template_var, command=self.on_message_var_selected)
+            var_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+            self.var_widgets.append(var_widget)
+            self.template_vars.append(message_template_var)
+
+        self.message_label = tkinter.ttk.Label(self.frm)
+        self.message_label.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+
+        tkinter.ttk.Button(self.frm, text="Send", command=self.send_message).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+
+        tkinter.ttk.Button(self.frm, text="Quit", command=self.root.destroy).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
+
+    def mainloop(self):
+        self.root.mainloop()
+
+    def get_message_text(self):
+        free_text = self.free_text_widget_var.get()
+        if free_text:
+            message_text = free_text
+        else:
+            message_text = self.message_widget_var.get()
+            message_text = message_text.format(*[template_var.get() for template_var in self.template_vars[:len(self.find_template_vars(message_text))]])
+        self.message_label.configure(text=message_text)
+        return message_text
+
+    def send_message(self):
+        message_text = self.get_message_text()
+        if not message_text:
+            self.logger.warn("no message")
+            return
+        self.logger.info(f"{'[dry run] ' if self.args.dry else ''}sending message {message_text} to")
+        for guide in self.guides:
+            if guide.var.get():
+                self.logger.info(guide.number)
+                if not self.args.dry:
+                    pywhatkit.sendwhatmsg_instantly(guide.number, message_text, wait_time=20, tab_close=True)
+
+    def find_template_vars(self, template):
+        i = template.find("{}")
+        vars = []
+        while i >= 0:
+            vars.append(i)
+            i = template.find("{}", i + 1)
+        return vars
+
+    def on_message_template_selected(self, selected_message_template):
+        self.logger.debug(f"on_message_template_selected {selected_message_template}")
+        message_template = self.message_templates_dict[selected_message_template]
+        var_indices = self.find_template_vars(message_template.template)
+        for i, var_widget in enumerate(self.var_widgets):
+            if i < len(var_indices):
+                var_widget.set_menu(None, *message_template.variables[i])
+            else:
+                var_widget.set_menu()
+        message_text = self.get_message_text()
+        self.message_label.configure(text=message_text)
+
+    def on_message_var_selected(self, selected_var):
+        message_text = self.get_message_text()
+        self.message_label.configure(text=message_text)
+
+    def on_free_text_updated(self, message_text):
+        self.logger.info(f"on_free_text_updated {message_text}")
+        self.message_label.configure(text=message_text)
+        return True
 
 class MessageTemplate:
     def __init__(self, template, *args):
@@ -51,57 +150,6 @@ class Accumulator:
     def get_next(self):
         self.val += 1
         return self.val - 1
-
-def get_message_text():
-    free_text = message_sender.free_text_widget_var.get()
-    if free_text:
-        message_text = free_text
-    else:
-        message_text = message_sender.message_widget_var.get()
-        message_text = message_text.format(*[template_var.get() for template_var in message_sender.template_vars[:len(find_template_vars(message_text))]])
-    message_sender.message_label.configure(text=message_text)
-    return message_text
-
-def send_message():
-    message_text = get_message_text()
-    if not message_text:
-        message_sender.logger.warn("no message")
-        return
-    message_sender.logger.info(f"{'[dry run] ' if message_sender.dry_run else ''}sending message {message_text} to")
-    for guide in message_sender.guides:
-        if guide.var.get():
-            message_sender.logger.info(guide.number)
-            if not message_sender.dry_run:
-                pywhatkit.sendwhatmsg_instantly(guide.number, message_text, wait_time=20, tab_close=True)
-
-def find_template_vars(template):
-    i = template.find("{}")
-    vars = []
-    while i >= 0:
-        vars.append(i)
-        i = template.find("{}", i + 1)
-    return vars
-
-def on_message_template_selected(selected_message_template):
-    message_sender.logger.debug(f"on_message_template_selected {selected_message_template}")
-    message_template = message_sender.message_templates_dict[selected_message_template]
-    var_indices = find_template_vars(message_template.template)
-    for i, var_widget in enumerate(message_sender.var_widgets):
-        if i < len(var_indices):
-            var_widget.set_menu(None, *message_template.variables[i])
-        else:
-            var_widget.set_menu()
-    message_text = get_message_text()
-    message_sender.message_label.configure(text=message_text)
-
-def on_message_var_selected(selected_var):
-    message_text = get_message_text()
-    message_sender.message_label.configure(text=message_text)
-
-def on_free_text_updated(message_text):
-    message_sender.logger.info(f"on_free_text_updated {message_text}")
-    message_sender.message_label.configure(text=message_text)
-    return True
 
 def get_guides(test_guides=None):
     with open(os.path.join(os.path.dirname(__file__), "guides.csv"), encoding="utf-8") as f:
@@ -119,87 +167,9 @@ def get_guides(test_guides=None):
             guides.append(Guide(name, number))
     return guides
 
-def message_sender_form():
-    parser = argparse.ArgumentParser(
-        prog="MessageSender",
-        description="Sends WhatsApp messages in bulk",
-    )
-    parser.add_argument("-d", "--dry", action="store_true", help="Don't actually send messages")
-    parser.add_argument("-t", "--test", help="Additional test numbers (format: <name>:<number>[<name>:<number>...])")
-    parser.add_argument("-v", "--verbose", action="store_true", help="print debug logs")
-    args = parser.parse_args()
-
-    logging.basicConfig(stream=sys.stderr)
-    logger = logging.getLogger("MessageSender")
-    logger.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-
-    NUM_COLUMNS = 3
-
-    global message_sender
-    root = tkinter.Tk()
-    root.title("מי פנוי באלנבי?")
-    frm = tkinter.ttk.Frame(root, padding=10)
-    frm.grid()
-    guides = get_guides(args.test)
-    for guide in guides:
-        logger.debug(f"Guide {guide.number}")
-    receipt_check_boxes = []
-    for i, guide in enumerate(guides):
-        check_button = tkinter.ttk.Checkbutton(frm, text=guide.name, variable=guide.var)
-        check_button.grid(column=(NUM_COLUMNS - i % NUM_COLUMNS - 1), row=i // NUM_COLUMNS)
-        receipt_check_boxes.append(check_button)
-    sessions = ["ראשון", "שני", "שלישי", "רביעי"]
-    days = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
-    message_templates = [
-        MessageTemplate("היי, אפשרי לך לקחת מחזור {} ביום {}?", sessions, days),
-        MessageTemplate("היי, הקבוצה של מחזור {} ביום {} ביטלה.", sessions, days),
-        MessageTemplate("היי, הקבוצה של מחזור {} ביום {} {} ב{}. אפשרי לך?", sessions, days, ["מאחרת", "מקדימה"], ["15 דקות", "30 דקות", "שעה"]),
-        MessageTemplate("תודה!")
-    ]
-    message_templates_dict = {template.template: template for template in message_templates}
-    row_accumulator = Accumulator()
-
-    INPUT_COLUMN = NUM_COLUMNS
-
-    free_text_widget_var = tkinter.StringVar()
-    free_text_widget = tkinter.ttk.Entry(frm, textvariable=free_text_widget_var, validate="key", validatecommand=(frm.register(on_free_text_updated), "%P"))
-    free_text_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
-
-    message_widget_var = tkinter.StringVar()
-    message_widget = tkinter.ttk.OptionMenu(frm, message_widget_var, None, *[template.template for template in message_templates], command=on_message_template_selected)
-    message_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
-
-    template_vars = []
-    var_widgets = []
-    for i in range(4):
-        message_template_var = tkinter.StringVar()
-        var_widget = tkinter.ttk.OptionMenu(frm, message_template_var, command=on_message_var_selected)
-        var_widget.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
-        var_widgets.append(var_widget)
-        template_vars.append(message_template_var)
-
-    message_label = tkinter.ttk.Label(frm)
-    message_label.grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
-
-    tkinter.ttk.Button(frm, text="Send", command=send_message).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
-
-    tkinter.ttk.Button(frm, text="Quit", command=root.destroy).grid(column=INPUT_COLUMN, row=row_accumulator.get_next())
-
-    message_sender = MessageSender(
-        logger,
-        args,
-        message_widget,
-        message_widget_var,
-        guides,
-        message_templates_dict,
-        var_widgets,
-        template_vars,
-        message_label,
-        free_text_widget_var,
-    )
-
-    root.mainloop()
-
+def main():
+    message_sender = MessageSender()
+    message_sender.mainloop()
 
 if __name__ == "__main__":
-    message_sender_form()
+    main()
